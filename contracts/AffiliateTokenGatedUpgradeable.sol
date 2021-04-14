@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 
-import "@openzoppelin/contracts/token/ERC20/ERC20Upgradeable.sol";
-import "@openzoppelin/contracts/utils/PausableUpgradeable.sol";
+import "deps/@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "deps/@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "./BaseWrapperUpgradeable.sol";
 
 import "interfaces/yearn/VaultApi.sol";
@@ -224,32 +224,34 @@ contract AffiliateTokenGatedUpgradeable is ERC20Upgradeable, BaseWrapperUpgradea
 
     /// @dev Deposit specified amount of token in wrapper for specified recipient
     /// @dev A merkle proof can be supplied to verify inclusion in merkle guest list if this functionality is active
-    function depositFor(address recipient, uint256 amount, bytes32[] memory merkleProof) public whenNotPaused returns (uint256 deposited) {
+    function depositFor(address recipient, uint256 amount, bytes32[] memory merkleProof) public whenNotPaused returns (uint256) {
         if (address(guestList) != address(0)) {
             require(guestList.authorized(msg.sender, amount, merkleProof), "guest-list-authorization");
         }
 
-        deposited = _deposit(msg.sender, address(this), amount, true); // `true` = pull from `msg.sender`
-        uint256 shares = _sharesForValue(deposited); // NOTE: Must be calculated after deposit is handled
+        (uint256 virtualDeposited, uint256 deposited) = _deposit(msg.sender, address(this), amount, true); // `true` = pull from `msg.sender`
+        uint256 shares = _sharesForValue(virtualDeposited); // NOTE: Must be calculated after deposit is handled
         _mint(recipient, shares);
 
         emit Deposit(recipient, deposited);
         emit Mint(recipient, shares);
+        return deposited;
     }
 
     /// @dev Deposit specified amount of token in wrapper
     /// @dev A merkle proof can be supplied to verify inclusion in merkle guest list if this functionality is active
-    function deposit(uint256 amount, bytes32[] calldata merkleProof) public whenNotPaused returns (uint256 deposited) {
+    function deposit(uint256 amount, bytes32[] calldata merkleProof) public whenNotPaused returns (uint256) {
         if (address(guestList) != address(0)) {
             require(guestList.authorized(msg.sender, amount, merkleProof), "guest-list-authorization");
         }
 
-        deposited = _deposit(msg.sender, address(this), amount, true); // `true` = pull from `msg.sender`
-        uint256 shares = _sharesForValue(deposited); // NOTE: Must be calculated after deposit is handled
+        (uint256 virtualDeposited, uint256 deposited) = _deposit(msg.sender, address(this), amount, true); // `true` = pull from `msg.sender`
+        uint256 shares = _sharesForValue(virtualDeposited); // NOTE: Must be calculated after deposit is handled
         _mint(msg.sender, shares);
 
         emit Deposit(msg.sender, deposited);
         emit Mint(msg.sender, shares);
+        return deposited;
     }
 
     function withdraw() external whenNotPaused returns (uint256) {
